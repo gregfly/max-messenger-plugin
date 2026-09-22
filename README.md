@@ -22,8 +22,10 @@ MCP channel plugin that bridges [MAX Messenger](https://max.ru) Bot API to [Clau
 - **Send & receive** — full text messaging with Markdown support
 - **Edit messages** — update sent messages without push notifications (perfect for progress updates)
 - **File sharing** — upload and send files up to 50 MB (images display inline)
+- **Emoji reactions** — react to a message with an emoji (posted as a quote-reply; MAX has no native reactions)
+- **Permission relay** — approve Claude Code tool-permission prompts right from the chat (`y <code>` / `n <code>`)
 - **Auto-chunking** — long messages automatically split at 4000 char limit
-- **Access control** — flexible allowlist, open, or disabled modes
+- **Access control** — secure by default (`allowlist`); `open` and `disabled` modes available
 - **Typing indicator** — shows "typing..." while agent processes
 - **Graceful shutdown** — clean disconnect on exit
 - **Multi-agent** — run multiple agents with separate bot tokens and configs
@@ -39,7 +41,7 @@ MCP channel plugin that bridges [MAX Messenger](https://max.ru) Bot API to [Clau
 ### 2. Install
 
 ```bash
-git clone https://github.com/MAVII-RU/max-messenger-plugin.git
+git clone https://github.com/gregfly/max-messenger-plugin.git
 cd max-messenger-plugin
 chmod +x install.sh
 ./install.sh
@@ -70,10 +72,12 @@ echo "MAX_BOT_TOKEN=your_token_here" > ~/.claude/channels/max/.env
 chmod 600 ~/.claude/channels/max/.env
 
 # Create access control
+# Secure by default: allowlist. Put YOUR MAX user_id in allowFrom — with an
+# empty list nobody is accepted. (Find your user_id in an inbound message's meta.)
 cat > ~/.claude/channels/max/access.json << 'EOF'
 {
-  "dmPolicy": "open",
-  "allowFrom": [],
+  "dmPolicy": "allowlist",
+  "allowFrom": ["YOUR_MAX_USER_ID"],
   "groups": {}
 }
 EOF
@@ -85,13 +89,18 @@ bun install
 
 ## Tools
 
-The plugin exposes three MCP tools to Claude Code:
+The plugin exposes four MCP tools to Claude Code:
 
 | Tool | Description |
 |------|-------------|
 | `reply` | Send a reply to a MAX chat. Supports text up to 4000 chars (auto-chunked). Pass `chat_id` from inbound message. |
+| `react` | React to a message with an emoji. Posted as an emoji quote-reply — MAX has no native reaction API. |
 | `edit_message` | Edit a previously sent message. Edits don't trigger push notifications — ideal for progress updates. |
 | `send_file` | Send a file attachment (absolute path, max 50 MB). Images render inline. |
+
+## Permission Relay
+
+When Claude Code asks for permission to run a tool, the prompt is forwarded to every allowlisted user as `🔐 Разрешение: <tool>` followed by a short code. Approve by replying **`y <code>`** or deny with **`n <code>`**. Only allowlisted users can decide, and such a reply is consumed as the decision (it is not delivered into the session as a normal message).
 
 ## Environment Variables
 
@@ -99,6 +108,7 @@ The plugin exposes three MCP tools to Claude Code:
 |----------|----------|-------------|
 | `MAX_BOT_TOKEN` | Yes | Bot token from MAX Business |
 | `MAX_STATE_DIR` | No | Config directory (default: `~/.claude/channels/max`) |
+| `MAX_API_BASE` | No | API base URL (default: `https://platform-api.max.ru`) |
 
 ## Access Control
 
@@ -120,8 +130,8 @@ Configure `~/.claude/channels/max/access.json`:
 
 | Policy | Behavior |
 |--------|----------|
+| `allowlist` | **(default)** Only from listed user IDs — secure by default. With no `access.json`, nobody is accepted until you add your `user_id`. |
 | `open` | Accept messages from everyone |
-| `allowlist` | Only from listed user IDs |
 | `disabled` | Reject all DMs |
 
 ### Group Chats
