@@ -514,7 +514,10 @@ async function startPolling(): Promise<void> {
         const senderName = msg.sender?.name || 'Unknown'
         const text = msg.body?.text || ''
         const messageId = String(msg.body?.mid || '')
-        const timestamp = update.timestamp || Math.floor(Date.now() / 1000)
+        // MAX sends update.timestamp in MILLISECONDS; the old `* 1000` yielded
+        // year-58695 dates in the channel meta. Accept either unit to be safe.
+        const rawTs = Number(update.timestamp) || 0
+        const tsMs = rawTs > 1e12 ? rawTs : rawTs > 0 ? rawTs * 1000 : Date.now()
 
         // Access check
         if (!isAllowedSender(senderId)) {
@@ -552,7 +555,7 @@ async function startPolling(): Promise<void> {
           message_id: messageId,
           user: senderName,
           user_id: senderId,
-          ts: new Date(timestamp * 1000).toISOString(),
+          ts: new Date(tsMs).toISOString(),
         }
         let contentText = text || ''
 
