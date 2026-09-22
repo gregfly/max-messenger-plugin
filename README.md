@@ -81,8 +81,7 @@ chmod 600 ~/.claude/channels/max/.env
 cat > ~/.claude/channels/max/access.json << 'EOF'
 {
   "dmPolicy": "allowlist",
-  "allowFrom": ["YOUR_MAX_USER_ID"],
-  "groups": {}
+  "allowFrom": ["YOUR_MAX_USER_ID"]
 }
 EOF
 
@@ -135,12 +134,7 @@ Configure `~/.claude/channels/max/access.json`:
 ```json
 {
   "dmPolicy": "allowlist",
-  "allowFrom": ["user_id_1", "user_id_2"],
-  "groups": {
-    "-group_chat_id": {
-      "allowFrom": ["user_id_1"]
-    }
-  }
+  "allowFrom": ["user_id_1", "user_id_2"]
 }
 ```
 
@@ -154,7 +148,7 @@ Configure `~/.claude/channels/max/access.json`:
 
 ### Group Chats
 
-Groups require explicit configuration. Add the group chat ID to the `groups` object with its own `allowFrom` list. Messages from unlisted users in configured groups are silently ignored.
+There is no per-group configuration: access is decided by the sender, not the chat. A message from a group reaches the session only if its author is in `allowFrom`; everyone else is silently ignored. Replies go to whatever chat the message came from (the `chat_id` in its meta) — there is no separate outbound chat filter. A `groups` key left in an older `access.json` is ignored.
 
 ## Multi-Agent Setup
 

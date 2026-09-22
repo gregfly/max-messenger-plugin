@@ -99,16 +99,20 @@ process.on('uncaughtException', err => {
 type Access = {
   dmPolicy: 'open' | 'allowlist' | 'disabled'
   allowFrom: string[]
-  groups: Record<string, { allowFrom: string[] }>
 }
 
+// Access is enforced on INBOUND only: a message reaches the session solely if
+// its sender is allowlisted (isAllowedSender), whatever chat it came from. Outbound
+// tools take the chat_id from such a message, so no separate chat filter is
+// needed — the old one compared chat_id against user ids and forced operators to
+// list their own DM chat_id under "groups" to get replies through.
 // Secure by default: with no access.json (or no dmPolicy set), require an
 // explicit allowlist. 'allowlist' + empty allowFrom = deny all, so a fresh
 // install never injects a stranger's message into a Claude Code session until
 // the operator adds their own user_id. Set dmPolicy:"open" deliberately to
 // accept anyone.
 function defaultAccess(): Access {
-  return { dmPolicy: 'allowlist', allowFrom: [], groups: {} }
+  return { dmPolicy: 'allowlist', allowFrom: [] }
 }
 
 function loadAccess(): Access {
@@ -118,19 +122,10 @@ function loadAccess(): Access {
     return {
       dmPolicy: parsed.dmPolicy ?? 'allowlist',
       allowFrom: parsed.allowFrom ?? [],
-      groups: parsed.groups ?? {},
     }
   } catch {
     return defaultAccess()
   }
-}
-
-function assertAllowedChat(chatId: string): void {
-  const access = loadAccess()
-  if (access.dmPolicy === 'open') return
-  if (access.allowFrom.includes(chatId)) return
-  if (chatId in access.groups) return
-  throw new Error(`chat ${chatId} is not allowlisted — add to access.json`)
 }
 
 function isAllowedSender(senderId: string): boolean {
@@ -365,7 +360,6 @@ mcp.setRequestHandler(CallToolRequestSchema, async req => {
         const chat_id = args.chat_id as string
         const text = args.text as string
         const reply_to = args.reply_to as string | undefined
-        assertAllowedChat(chat_id)
 
         const chunks = chunkText(text)
         const sentIds: string[] = []
@@ -386,7 +380,6 @@ mcp.setRequestHandler(CallToolRequestSchema, async req => {
         const chat_id = args.chat_id as string
         const message_id = args.message_id as string
         const emoji = ((args.emoji as string) ?? '').trim()
-        assertAllowedChat(chat_id)
         if (!emoji) throw new Error('emoji required')
         // No native reactions in MAX — emulate as an emoji quote-reply.
         await sendMessage(chat_id, emoji, message_id)
@@ -404,7 +397,6 @@ mcp.setRequestHandler(CallToolRequestSchema, async req => {
         const chat_id = args.chat_id as string
         const file_path = args.file_path as string
         const caption = args.caption as string | undefined
-        assertAllowedChat(chat_id)
         assertSendable(file_path)
 
         const st = statSync(file_path)

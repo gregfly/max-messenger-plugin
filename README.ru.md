@@ -81,8 +81,7 @@ chmod 600 ~/.claude/channels/max/.env
 cat > ~/.claude/channels/max/access.json << 'EOF'
 {
   "dmPolicy": "allowlist",
-  "allowFrom": ["ВАШ_MAX_USER_ID"],
-  "groups": {}
+  "allowFrom": ["ВАШ_MAX_USER_ID"]
 }
 EOF
 
@@ -135,12 +134,7 @@ EOF
 ```json
 {
   "dmPolicy": "allowlist",
-  "allowFrom": ["user_id_1", "user_id_2"],
-  "groups": {
-    "-group_chat_id": {
-      "allowFrom": ["user_id_1"]
-    }
-  }
+  "allowFrom": ["user_id_1", "user_id_2"]
 }
 ```
 
@@ -151,6 +145,10 @@ EOF
 | `allowlist` | **(по умолчанию)** Только от указанных user ID — безопасно по умолчанию. Без `access.json` не принимается никто, пока не добавите свой `user_id`. |
 | `open` | Принимать сообщения от всех |
 | `disabled` | Отклонять все сообщения |
+
+### Групповые чаты
+
+Отдельной настройки групп нет: доступ проверяется по отправителю, а не по чату. Сообщение из группы попадает в сессию, только если его автор есть в `allowFrom`; остальные молча игнорируются. Ответы уходят в тот чат, откуда пришло сообщение (`chat_id` из meta), отдельного фильтра по chat_id нет. Ключ `groups` в старых `access.json` игнорируется.
 
 ## Мультиагентная настройка
 
