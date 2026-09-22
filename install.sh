@@ -46,13 +46,13 @@ if [ -f "$ACCESS_FILE" ]; then
 else
   cat > "$ACCESS_FILE" << 'EOF'
 {
-  "dmPolicy": "open",
-  "allowFrom": [],
+  "dmPolicy": "allowlist",
+  "allowFrom": ["ВАШ_MAX_USER_ID"],
   "groups": {}
 }
 EOF
   chmod 600 "$ACCESS_FILE"
-  echo "4. Создан access.json (dmPolicy: open)"
+  echo "4. Создан access.json (dmPolicy: allowlist) — впишите свой user_id в allowFrom"
 fi
 
 # 5. Устанавливаем зависимости
@@ -69,15 +69,33 @@ else
   echo "   -> Ошибка сборки. Проверьте зависимости."
 fi
 
+# 7. Регистрируем MCP-сервер. Именно этого шага не хватало: без регистрации
+# claude не знает сервер "max-messenger", и флаг канала ничего не запускает.
+# Регистрация project-scoped (отдельная директория запуска), а НЕ глобально в
+# ~/.claude.json — нарочно: MAX даёт один consumer /updates на токен бота, и
+# глобальная запись заставила бы КАЖДУЮ новую сессию claude поднимать свой
+# поллер и перехватывать канал.
+LAUNCH_DIR="$HOME/max-channel"
+echo "7. Регистрирую MCP-сервер в $LAUNCH_DIR/.mcp.json..."
+mkdir -p "$LAUNCH_DIR"
+cat > "$LAUNCH_DIR/.mcp.json" << EOF
+{
+  "mcpServers": {
+    "max-messenger": {
+      "command": "bun",
+      "args": ["run", "--cwd", "$PLUGIN_DIR", "--shell=bun", "--silent", "start"]
+    }
+  }
+}
+EOF
+echo "   -> $LAUNCH_DIR/.mcp.json"
+
 echo ""
 echo "=== Готово! ==="
 echo ""
-echo "Запуск:"
-echo "  claude --channels max-messenger"
+echo "Запуск (из директории канала, чтобы подхватился .mcp.json):"
+echo "  cd $LAUNCH_DIR && claude --dangerously-load-development-channels server:max-messenger"
 echo ""
-echo "Или добавьте в ~/.claude/mcp.json:"
-echo '  "max-messenger": {'
-echo '    "command": "bun",'
-echo '    "args": ["run", "--cwd", "'$PLUGIN_DIR'", "--shell=bun", "--silent", "start"]'
-echo '  }'
+echo "При первом запуске claude попросит одобрить project-scoped сервер max-messenger — подтвердите."
+echo "Впишите свой MAX user_id в $ACCESS_FILE (allowFrom), иначе сообщения будут отброшены."
 echo ""

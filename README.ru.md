@@ -55,9 +55,13 @@ chmod +x install.sh
 
 ### 3. Запуск Claude Code с каналом
 
+Установщик регистрирует MCP-сервер `max-messenger` **project-scoped** в `~/max-channel/.mcp.json`, поэтому запускайте из этой директории:
+
 ```bash
-claude --dangerously-load-development-channels server:max-messenger
+cd ~/max-channel && claude --dangerously-load-development-channels server:max-messenger
 ```
+
+При первом запуске Claude Code попросит одобрить project-scoped сервер `max-messenger` — подтвердите. Регистрация сделана по-директорийно, а не глобально, нарочно: MAX даёт один consumer `/updates` на токен бота, и глобальная запись заставила бы каждую новую сессию `claude` поднимать конкурирующий поллер и перехватывать канал.
 
 ## Ручная установка
 
@@ -85,6 +89,20 @@ EOF
 # Установка зависимостей
 cd ~/.claude/plugins/local/max-messenger
 bun install
+
+# Регистрация MCP-сервера (project-scoped). Без этого шага Claude Code не знает
+# сервер "max-messenger", и флаг канала ничего не запускает.
+mkdir -p ~/max-channel
+cat > ~/max-channel/.mcp.json << EOF
+{
+  "mcpServers": {
+    "max-messenger": {
+      "command": "bun",
+      "args": ["run", "--cwd", "$HOME/.claude/plugins/local/max-messenger", "--shell=bun", "--silent", "start"]
+    }
+  }
+}
+EOF
 ```
 
 ## Инструменты

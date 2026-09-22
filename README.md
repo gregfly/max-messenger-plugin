@@ -55,9 +55,13 @@ The installer will:
 
 ### 3. Run Claude Code with the channel
 
+The installer registers the `max-messenger` MCP server **project-scoped** in `~/max-channel/.mcp.json`, so launch from that directory:
+
 ```bash
-claude --dangerously-load-development-channels server:max-messenger
+cd ~/max-channel && claude --dangerously-load-development-channels server:max-messenger
 ```
+
+On first run Claude Code asks you to approve the project-scoped `max-messenger` server — confirm it. It is registered per-directory rather than globally on purpose: MAX allows one `/updates` consumer per bot token, so a global entry would make every new `claude` session spawn a competing poller and steal the channel.
 
 ## Manual Installation
 
@@ -85,6 +89,20 @@ EOF
 # Install dependencies
 cd ~/.claude/plugins/local/max-messenger
 bun install
+
+# Register the MCP server (project-scoped). Without this step Claude Code does
+# not know a server named "max-messenger" and the channel flag starts nothing.
+mkdir -p ~/max-channel
+cat > ~/max-channel/.mcp.json << EOF
+{
+  "mcpServers": {
+    "max-messenger": {
+      "command": "bun",
+      "args": ["run", "--cwd", "$HOME/.claude/plugins/local/max-messenger", "--shell=bun", "--silent", "start"]
+    }
+  }
+}
+EOF
 ```
 
 ## Tools
