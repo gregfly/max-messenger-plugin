@@ -47,8 +47,7 @@ else
   cat > "$ACCESS_FILE" << 'EOF'
 {
   "dmPolicy": "allowlist",
-  "allowFrom": ["ВАШ_MAX_USER_ID"],
-  "groups": {}
+  "allowFrom": ["ВАШ_MAX_USER_ID"]
 }
 EOF
   chmod 600 "$ACCESS_FILE"
