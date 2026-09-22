@@ -233,6 +233,7 @@ const mcp = new Server(
       '',
       'reply accepts text up to 4000 chars per message (auto-chunked if longer).',
       'Use edit_message for interim progress updates — edits don\'t push-notify.',
+      'Use react to acknowledge a message with a single emoji (posted as an emoji quote-reply, since MAX has no native reactions).',
       'When a long task completes, send a new reply so the user\'s device pings.',
       '',
       'Voice messages: If the tag has attachment_kind="voice" and attachment_path, Read that file with whisper to transcribe it:',
@@ -307,6 +308,20 @@ mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'react',
+      description:
+        'React to a MAX message with a single emoji. MAX has no native reaction API, so this posts the emoji as a quote-reply to the target message.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          chat_id: { type: 'string' },
+          message_id: { type: 'string', description: 'The mid of the message to react to.' },
+          emoji: { type: 'string', description: 'A single emoji, e.g. 👍 🔥 ✅ 👀' },
+        },
+        required: ['chat_id', 'message_id', 'emoji'],
+      },
+    },
+    {
       name: 'edit_message',
       description:
         'Edit a message the bot previously sent. Edits don\'t trigger push notifications — send a new reply when a long task completes.',
@@ -365,6 +380,17 @@ mcp.setRequestHandler(CallToolRequestSchema, async req => {
           ? `sent (id: ${sentIds[0]})`
           : `sent ${sentIds.length} parts (ids: ${sentIds.join(', ')})`
         return { content: [{ type: 'text', text: result }] }
+      }
+
+      case 'react': {
+        const chat_id = args.chat_id as string
+        const message_id = args.message_id as string
+        const emoji = ((args.emoji as string) ?? '').trim()
+        assertAllowedChat(chat_id)
+        if (!emoji) throw new Error('emoji required')
+        // No native reactions in MAX — emulate as an emoji quote-reply.
+        await sendMessage(chat_id, emoji, message_id)
+        return { content: [{ type: 'text', text: `reacted ${emoji}` }] }
       }
 
       case 'edit_message': {
