@@ -557,7 +557,18 @@ async function startPolling(): Promise<void> {
           user_id: senderId,
           ts: new Date(tsMs).toISOString(),
         }
+        // Forwarded message: MAX puts the original author in link.sender. Surface
+        // it so the operator can learn a user's id by forwarding their message
+        // to the bot (there is no other way to look an id up in MAX).
         let contentText = text || ''
+        const link = msg.link
+        if (link?.type === 'forward') {
+          meta.forward_from = link.sender?.name || 'Unknown'
+          meta.forward_from_user_id = String(link.sender?.user_id || '')
+          if (link.chat_id) meta.forward_from_chat_id = String(link.chat_id)
+          const fwdText = link.message?.text || ''
+          if (fwdText) contentText = (contentText ? contentText + '\n' : '') + `[forwarded] ${fwdText}`
+        }
 
         // Auto-reply "listening" for voice messages before processing
         const hasVoice = attachments.some((a: any) => a.type === 'voice' || a.type === 'audio')
